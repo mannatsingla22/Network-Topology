@@ -25,24 +25,6 @@ This project is a full-stack web application designed to scan a local network, d
 
 ***
 
-## Project Structure
-
-project-root
-├── backend
-│   ├── express-server
-│   │   ├── index.js
-│   │   └── package.json
-│   └── scripts
-│       ├── himanshu_subnet_discovery.py
-│       └── arnav_port_scanner.py
-├── frontend
-│   └── vite-react-ui
-│       ├── src
-│       └── package.json
-└── README.md
-
-***
-
 ## Setup and Installation
 
 ### Prerequisites
