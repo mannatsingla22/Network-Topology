@@ -1,15 +1,16 @@
 import socket
-from pymongo import MongoClient
 from neo4j import GraphDatabase
+from pymongo import MongoClient
 
-# Neo4j Configuration
+# --- Neo4j Configuration ---
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "your_neo4j_password" # <-- IMPORTANT: Change this!
+NEO4J_PASSWORD = "Himanshu@07"  # ✅ Your actual password
 
-# MongoDB Configuration
+# --- MongoDB Configuration ---
 MONGO_URI = "mongodb://localhost:27017"
 
+# --- Get IPs from Neo4j ---
 def get_discovered_ips():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     ips = []
@@ -19,37 +20,37 @@ def get_discovered_ips():
     driver.close()
     return ips
 
-def get_service_name(port):
-    try:
-        return socket.getservbyport(port, 'tcp')
-    except OSError:
-        return "Unknown"
-
-def scan_tcp_ports(ip, start_port=1, end_port=1024):
+# --- Scan open ports on an IP ---
+def scan_ports(ip, ports_to_check):
     open_ports = []
-    for port in range(start_port, end_port + 1):
+    for port in ports_to_check:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(0.5)
-            if s.connect_ex((ip, port)) == 0:
-                service = get_service_name(port)
-                open_ports.append({"port": port, "service": service})
+            try:
+                s.connect((ip, port))
+                open_ports.append(port)
+            except:
+                continue
     return open_ports
 
-def save_to_mongodb(ip, open_ports):
-    client = MongoClient(MONGO_URI)
+# --- Save result to MongoDB ---
+def save_scan_result(ip, open_ports, uri=MONGO_URI):
+    client = MongoClient(uri)
     db = client["network_scan"]
     collection = db["open_ports"]
-    collection.update_one(
-        {"ip": ip},
-        {"$set": {"open_ports": open_ports}},
-        upsert=True
-    )
-    client.close()
+    collection.update_one({"ip": ip}, {"$set": {"open_ports": open_ports}}, upsert=True)
+    print(f"✅ Stored scan results for {ip}")
 
+# --- Main script ---
 if __name__ == "__main__":
-    ips_to_scan = get_discovered_ips()
-    for ip in ips_to_scan:
-        print(f"Scanning ports for {ip}...")
-        open_ports = scan_tcp_ports(ip)
-        save_to_mongodb(ip, open_ports)
-        print(f"Found {len(open_ports)} open ports for {ip}. Results stored in MongoDB.")
+    ips = get_discovered_ips()
+    ports_to_scan = list(range(1, 1025))
+
+
+    for ip in ips:
+        print(f"🔍 Scanning {ip}...")
+        open_ports = scan_ports(ip, ports_to_scan)
+        print(f"✅ Open ports on {ip}: {open_ports}")
+        save_scan_result(ip, open_ports)
+
+    print("🎉 Scanning complete. Results saved to MongoDB.")
